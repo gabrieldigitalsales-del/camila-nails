@@ -1,76 +1,54 @@
-const ONE_DAY = 60 * 60 * 24
-
-function parseCookies(cookieHeader = '') {
+function getCookieMap(request) {
+  const cookieHeader = request.headers.get('cookie') || ''
+  const pairs = cookieHeader.split(';').map((part) => part.trim()).filter(Boolean)
   return Object.fromEntries(
-    cookieHeader
-      .split(';')
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .map((part) => {
-        const index = part.indexOf('=')
-        if (index === -1) return [part, '']
-        return [part.slice(0, index), decodeURIComponent(part.slice(index + 1))]
-      })
+    pairs.map((pair) => {
+      const idx = pair.indexOf('=')
+      if (idx === -1) return [pair, '']
+      return [pair.slice(0, idx), decodeURIComponent(pair.slice(idx + 1))]
+    })
   )
 }
 
-function isSecureRequest(request) {
-  const proto = request.headers.get('x-forwarded-proto')
-  return proto === 'https'
-}
-
-function buildSessionCookie(value, request, maxAge = ONE_DAY) {
-  const parts = [
-    `admin_session=${encodeURIComponent(value)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${maxAge}`,
-  ]
-
-  if (isSecureRequest(request)) {
-    parts.push('Secure')
-  }
-
-  return parts.join('; ')
-}
-
-export function requireAdminPassword() {
-  const password = process.env.ADMIN_PASSWORD
-  if (!password) {
-    throw new Error('ADMIN_PASSWORD nao configurada no projeto.')
-  }
-  return password
+function getAdminSecret() {
+  return (process.env.ADMIN_PASSWORD || '').trim()
 }
 
 export function isAuthenticated(request) {
-  const cookies = parseCookies(request.headers.get('cookie') || '')
-  const expected = process.env.ADMIN_PASSWORD || ''
-  return Boolean(expected) && cookies.admin_session === expected
+  const secret = getAdminSecret()
+  if (!secret) return false
+  const cookies = getCookieMap(request)
+  return cookies.admin_session === secret
 }
 
-export function unauthorized() {
-  return new Response(JSON.stringify({ error: 'Nao autorizado.' }), {
-    status: 401,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-    },
-  })
-}
-
-export function createSessionHeaders(request) {
-  return {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-    'Set-Cookie': buildSessionCookie(requireAdminPassword(), request),
+export function requireAdmin(request) {
+  if (!getAdminSecret()) {
+    return new Response(JSON.stringify({ error: 'ADMIN_PASSWORD nao configurada na Vercel.' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    })
   }
+
+  if (!isAuthenticated(request)) {
+    return new Response(JSON.stringify({ error: 'Nao autorizado.' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    })
+  }
+
+  return null
 }
 
-export function clearSessionHeaders(request) {
-  return {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-    'Set-Cookie': buildSessionCookie('', request, 0),
-  }
+export function createSessionCookie() {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  return `admin_session=${encodeURIComponent(getAdminSecret())}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}`
+}
+
+export function clearSessionCookie() {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  return `admin_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
+}
+
+export function adminPasswordConfigured() {
+  return Boolean(getAdminSecret())
 }

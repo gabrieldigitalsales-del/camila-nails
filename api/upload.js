@@ -1,4 +1,4 @@
-import { isAuthenticated, unauthorized } from './_lib/auth.js'
+import { requireAdmin } from './_lib/auth.js'
 import { ensureBlobToken, json, putWithDetectedAccess } from './_lib/blobStore.js'
 
 function sanitizeFilename(filename = 'arquivo') {
@@ -12,11 +12,9 @@ function sanitizeFilename(filename = 'arquivo') {
 }
 
 export async function POST(request) {
+  const authError = requireAdmin(request)
+  if (authError) return authError
   try {
-    if (!isAuthenticated(request)) {
-      return unauthorized()
-    }
-
     await ensureBlobToken()
 
     const url = new URL(request.url)

@@ -1,12 +1,10 @@
-import { isAuthenticated, unauthorized } from './_lib/auth.js'
+import { requireAdmin } from './_lib/auth.js'
 import { ensureBlobToken, getJsonContent, json, saveJsonContent } from './_lib/blobStore.js'
 
 export async function GET(request) {
+  const authError = requireAdmin(request)
+  if (authError) return authError
   try {
-    if (!isAuthenticated(request)) {
-      return unauthorized()
-    }
-
     await ensureBlobToken()
     const { items, access, initialized } = await getJsonContent()
     return json({ items, mode: 'blob', access, initialized })
@@ -16,11 +14,9 @@ export async function GET(request) {
 }
 
 export async function PUT(request) {
+  const authError = requireAdmin(request)
+  if (authError) return authError
   try {
-    if (!isAuthenticated(request)) {
-      return unauthorized()
-    }
-
     await ensureBlobToken()
 
     const body = await request.json()
