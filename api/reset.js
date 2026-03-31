@@ -1,8 +1,13 @@
+import { isAuthenticated, unauthorized } from './_lib/auth.js'
 import { defaultContent } from '../src/data/defaultContent.js'
 import { ensureBlobToken, json, saveJsonContent } from './_lib/blobStore.js'
 
-export async function POST() {
+export async function POST(request) {
   try {
+    if (!isAuthenticated(request)) {
+      return unauthorized()
+    }
+
     await ensureBlobToken()
     const saved = await saveJsonContent(defaultContent)
     return json({ items: saved.items, mode: 'blob', access: saved.access, pathname: saved.blob.pathname })

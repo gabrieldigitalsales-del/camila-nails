@@ -1,7 +1,12 @@
+import { isAuthenticated, unauthorized } from './_lib/auth.js'
 import { ensureBlobToken, getJsonContent, json, saveJsonContent } from './_lib/blobStore.js'
 
-export async function GET() {
+export async function GET(request) {
   try {
+    if (!isAuthenticated(request)) {
+      return unauthorized()
+    }
+
     await ensureBlobToken()
     const { items, access, initialized } = await getJsonContent()
     return json({ items, mode: 'blob', access, initialized })
@@ -12,6 +17,10 @@ export async function GET() {
 
 export async function PUT(request) {
   try {
+    if (!isAuthenticated(request)) {
+      return unauthorized()
+    }
+
     await ensureBlobToken()
 
     const body = await request.json()

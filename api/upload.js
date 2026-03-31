@@ -1,3 +1,4 @@
+import { isAuthenticated, unauthorized } from './_lib/auth.js'
 import { ensureBlobToken, json, putWithDetectedAccess } from './_lib/blobStore.js'
 
 function sanitizeFilename(filename = 'arquivo') {
@@ -12,6 +13,10 @@ function sanitizeFilename(filename = 'arquivo') {
 
 export async function POST(request) {
   try {
+    if (!isAuthenticated(request)) {
+      return unauthorized()
+    }
+
     await ensureBlobToken()
 
     const url = new URL(request.url)
