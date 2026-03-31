@@ -33,9 +33,13 @@ export default function Admin() {
   const settings = content.find((item) => item.section === 'site_settings')
 
   const handleReset = async () => {
-    await resetContent()
-    await refresh()
-    toast.success('Conteudo restaurado para o padrao.')
+    try {
+      await resetContent()
+      await refresh()
+      toast.success('Conteudo restaurado para o padrao.')
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel restaurar.')
+    }
   }
 
   return (

@@ -59,17 +59,12 @@ export async function getAllContent() {
 
 export async function saveAllContent(items) {
   const sorted = sortItems(items)
-  writeLocalFallback(sorted)
-
-  try {
-    const data = await requestJson('/api/content', {
-      method: 'PUT',
-      body: JSON.stringify({ items: sorted }),
-    })
-    return sortItems(data.items || sorted)
-  } catch {
-    return sorted
-  }
+  const data = await requestJson('/api/content', {
+    method: 'PUT',
+    body: JSON.stringify({ items: sorted }),
+  })
+  writeLocalFallback(data.items || sorted)
+  return sortItems(data.items || sorted)
 }
 
 export async function createContent(item) {
@@ -89,25 +84,31 @@ export async function deleteContent(id) {
 }
 
 export async function resetContent() {
-  writeLocalFallback(defaultContent)
+  const data = await requestJson('/api/reset', { method: 'POST' })
+  writeLocalFallback(data.items || defaultContent)
+  return sortItems(data.items || defaultContent)
+}
 
-  try {
-    const data = await requestJson('/api/reset', { method: 'POST' })
-    return sortItems(data.items || defaultContent)
-  } catch {
-    return sortItems(defaultContent)
+async function fileToBase64(file) {
+  const buffer = await file.arrayBuffer()
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
   }
+  return btoa(binary)
 }
 
 export async function uploadImage(file) {
-  const filename = encodeURIComponent(file?.name || 'arquivo')
-
-  const data = await requestJson(`/api/upload?filename=${filename}`, {
+  const base64 = await fileToBase64(file)
+  const data = await requestJson('/api/upload', {
     method: 'POST',
-    headers: {
-      'Content-Type': file?.type || 'application/octet-stream',
-    },
-    body: file,
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      base64,
+    }),
   })
 
   return data.url

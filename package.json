@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:frontend": "vite",
+    "dev:vercel": "vercel dev",
     "build": "vite build",
-    "preview": "vite preview",
-    "dev:vercel": "vercel dev"
+    "preview": "vite preview"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

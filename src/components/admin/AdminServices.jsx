@@ -20,7 +20,8 @@ export default function AdminServices({ services = [], onRefresh }) {
 
   const addService = async () => {
     if (!newService.title) return toast.error('Adicione um nome para o servico')
-    await createContent({
+    try {
+      await createContent({
       section: 'service',
       title: newService.title,
       description: newService.description,
@@ -28,20 +29,31 @@ export default function AdminServices({ services = [], onRefresh }) {
       is_active: true,
       extra_data: JSON.stringify({ price: newService.price }),
     })
-    setNewService({ title: '', description: '', price: '' })
-    await onRefresh()
-    toast.success('Servico adicionado!')
+      setNewService({ title: '', description: '', price: '' })
+      await onRefresh()
+      toast.success('Servico adicionado!')
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel adicionar o servico.')
+    }
   }
 
   const handleDelete = async (id) => {
-    await deleteContent(id)
-    await onRefresh()
-    toast.success('Servico removido!')
+    try {
+      await deleteContent(id)
+      await onRefresh()
+      toast.success('Servico removido!')
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel remover o servico.')
+    }
   }
 
   const updateField = async (id, field, value) => {
-    await updateContent(id, { [field]: value })
-    await onRefresh()
+    try {
+      await updateContent(id, { [field]: value })
+      await onRefresh()
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel salvar.')
+    }
   }
 
   const updatePrice = async (service, price) => {
@@ -49,13 +61,21 @@ export default function AdminServices({ services = [], onRefresh }) {
     try {
       current = service.extra_data ? JSON.parse(service.extra_data) : {}
     } catch {}
-    await updateContent(service.id, { extra_data: JSON.stringify({ ...current, price }) })
-    await onRefresh()
+    try {
+      await updateContent(service.id, { extra_data: JSON.stringify({ ...current, price }) })
+      await onRefresh()
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel salvar o preco.')
+    }
   }
 
   const toggleActive = async (service) => {
-    await updateContent(service.id, { is_active: !service.is_active })
-    await onRefresh()
+    try {
+      await updateContent(service.id, { is_active: !service.is_active })
+      await onRefresh()
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel atualizar o servico.')
+    }
   }
 
   return (

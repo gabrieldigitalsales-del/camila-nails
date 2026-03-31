@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { ImageIcon } from 'lucide-react'
+import { ImageIcon, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateContent, uploadImage } from '@/services/contentStore'
 
@@ -40,10 +40,27 @@ export default function AdminPortfolio({ groups = [], onRefresh }) {
       })
       await onRefresh()
       toast.success('Imagem atualizada!')
-    } catch {
-      toast.error('Nao foi possivel carregar a imagem.')
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel carregar a imagem.')
     } finally {
       setUploadingId('')
+    }
+  }
+
+
+  const removeImage = async (item, field) => {
+    try {
+      const current = getImages(item)
+      await updateContent(item.id, {
+        extra_data: JSON.stringify({
+          ...current,
+          [field]: '',
+        }),
+      })
+      await onRefresh()
+      toast.success('Imagem removida!')
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel remover a imagem.')
     }
   }
 
@@ -89,30 +106,46 @@ export default function AdminPortfolio({ groups = [], onRefresh }) {
                   <div className="w-full h-44 rounded-xl overflow-hidden bg-muted border border-border">
                     {images.before_image ? <img src={images.before_image} alt="Antes" className="w-full h-full object-cover" /> : null}
                   </div>
-                  <label className="cursor-pointer text-xs text-primary font-body underline">
-                    {uploadingId === `${item.id}-before_image` ? 'Enviando...' : 'Trocar imagem antes'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => updateImage(item, 'before_image', e.target.files?.[0])}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer text-xs text-primary font-body underline">
+                      {uploadingId === `${item.id}-before_image` ? 'Enviando...' : 'Trocar imagem antes'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => updateImage(item, 'before_image', e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                    {images.before_image ? (
+                      <button type="button" onClick={() => removeImage(item, 'before_image')} className="text-xs text-destructive font-body inline-flex items-center gap-1">
+                        <Trash2 className="w-3 h-3" />
+                        Remover
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <p className="font-body text-xs uppercase tracking-[0.25em] text-muted-foreground">Depois</p>
                   <div className="w-full h-44 rounded-xl overflow-hidden bg-muted border border-border">
                     {images.after_image ? <img src={images.after_image} alt="Depois" className="w-full h-full object-cover" /> : null}
                   </div>
-                  <label className="cursor-pointer text-xs text-primary font-body underline">
-                    {uploadingId === `${item.id}-after_image` ? 'Enviando...' : 'Trocar imagem depois'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => updateImage(item, 'after_image', e.target.files?.[0])}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer text-xs text-primary font-body underline">
+                      {uploadingId === `${item.id}-after_image` ? 'Enviando...' : 'Trocar imagem depois'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => updateImage(item, 'after_image', e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                    {images.after_image ? (
+                      <button type="button" onClick={() => removeImage(item, 'after_image')} className="text-xs text-destructive font-body inline-flex items-center gap-1">
+                        <Trash2 className="w-3 h-3" />
+                        Remover
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>

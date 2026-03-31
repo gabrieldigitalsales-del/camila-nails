@@ -1,5 +1,13 @@
 import { put } from '@vercel/blob'
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '8mb',
+    },
+  },
+}
+
 function sanitizeFilename(filename = 'arquivo') {
   return filename
     .normalize('NFD')
@@ -9,25 +17,36 @@ function sanitizeFilename(filename = 'arquivo') {
     .toLowerCase()
 }
 
-export const runtime = 'nodejs'
-
-export async function POST(request) {
-  const { searchParams } = new URL(request.url)
-  const rawFilename = searchParams.get('filename') || 'arquivo'
-  const filename = sanitizeFilename(rawFilename)
-
-  if (!request.body) {
-    return new Response('Arquivo nao enviado.', { status: 400 })
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).send('Metodo nao permitido.')
   }
 
-  const pathname = `uploads/${Date.now()}-${filename}`
-  const blob = await put(pathname, request.body, {
-    access: 'public',
-    addRandomSuffix: true,
-  })
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    const fileName = body?.fileName
+    const contentType = body?.contentType || 'application/octet-stream'
+    const base64 = body?.base64
 
-  return Response.json({
-    url: blob.url,
-    pathname: blob.pathname,
-  })
+    if (!fileName || !base64) {
+      return res.status(400).send('Arquivo nao enviado.')
+    }
+
+    const pathname = `uploads/${Date.now()}-${sanitizeFilename(fileName)}`
+    const buffer = Buffer.from(base64, 'base64')
+
+    const blob = await put(pathname, buffer, {
+      access: 'public',
+      addRandomSuffix: true,
+      contentType,
+      cacheControlMaxAge: 0,
+    })
+
+    return res.status(200).json({
+      url: blob.url,
+      pathname: blob.pathname,
+    })
+  } catch (error) {
+    return res.status(500).send(error?.message || 'Erro ao enviar imagem.')
+  }
 }

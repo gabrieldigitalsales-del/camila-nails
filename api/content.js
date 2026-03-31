@@ -26,19 +26,25 @@ async function saveContentToBlob(items) {
   return items
 }
 
-export async function GET() {
-  const items = await readContentFromBlob()
-  return Response.json({ items })
-}
+export default async function handler(req, res) {
+  try {
+    if (req.method === 'GET') {
+      const items = await readContentFromBlob()
+      return res.status(200).json({ items })
+    }
 
-export async function PUT(request) {
-  const body = await request.json()
-  const items = Array.isArray(body?.items) ? body.items : []
+    if (req.method === 'PUT') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+      const items = Array.isArray(body?.items) ? body.items : []
+      if (items.length === 0) {
+        return res.status(400).send('Envie um array valido em items.')
+      }
+      const savedItems = await saveContentToBlob(items)
+      return res.status(200).json({ items: savedItems })
+    }
 
-  if (items.length === 0) {
-    return new Response('Envie um array valido em items.', { status: 400 })
+    return res.status(405).send('Metodo nao permitido.')
+  } catch (error) {
+    return res.status(500).send(error?.message || 'Erro interno ao salvar conteudo.')
   }
-
-  const savedItems = await saveContentToBlob(items)
-  return Response.json({ items: savedItems })
 }
