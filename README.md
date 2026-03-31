@@ -71,3 +71,8 @@ Nesse modo o projeto usa fallback local no navegador.
 
 - `npm run dev`: roda o front local com Vite
 - `npm run dev:vercel`: roda o projeto via Vercel CLI, se você quiser testar as rotas `/api` localmente
+
+
+## Ajuste aplicado em 2026-03-31
+
+O upload de imagem foi ajustado para o formato recomendado pela Vercel Blob em rotas `/api`: o arquivo vai direto no `body` da requisicao e o nome do arquivo segue por query string (`/api/upload?filename=...`).

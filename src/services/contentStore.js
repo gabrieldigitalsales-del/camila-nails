@@ -100,12 +100,14 @@ export async function resetContent() {
 }
 
 export async function uploadImage(file) {
-  const formData = new FormData()
-  formData.append('file', file)
+  const filename = encodeURIComponent(file?.name || 'arquivo')
 
-  const data = await requestJson('/api/upload', {
+  const data = await requestJson(`/api/upload?filename=${filename}`, {
     method: 'POST',
-    body: formData,
+    headers: {
+      'Content-Type': file?.type || 'application/octet-stream',
+    },
+    body: file,
   })
 
   return data.url

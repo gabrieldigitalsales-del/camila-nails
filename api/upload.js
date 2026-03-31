@@ -9,16 +9,19 @@ function sanitizeFilename(filename = 'arquivo') {
     .toLowerCase()
 }
 
-export async function POST(request) {
-  const form = await request.formData()
-  const file = form.get('file')
+export const runtime = 'nodejs'
 
-  if (!(file instanceof File)) {
+export async function POST(request) {
+  const { searchParams } = new URL(request.url)
+  const rawFilename = searchParams.get('filename') || 'arquivo'
+  const filename = sanitizeFilename(rawFilename)
+
+  if (!request.body) {
     return new Response('Arquivo nao enviado.', { status: 400 })
   }
 
-  const pathname = `uploads/${Date.now()}-${sanitizeFilename(file.name)}`
-  const blob = await put(pathname, file, {
+  const pathname = `uploads/${Date.now()}-${filename}`
+  const blob = await put(pathname, request.body, {
     access: 'public',
     addRandomSuffix: true,
   })
