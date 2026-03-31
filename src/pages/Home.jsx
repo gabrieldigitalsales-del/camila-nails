@@ -5,7 +5,7 @@ import AboutSection from '@/components/catalog/AboutSection'
 import ServicesSection from '@/components/catalog/ServicesSection'
 import BeforeAfterMosaic from '@/components/catalog/BeforeAfterMosaic'
 import ContactFooter from '@/components/catalog/ContactFooter'
-import { getAllContent } from '@/services/contentStore'
+import { getPublicContent } from '@/services/contentStore'
 
 export default function Home() {
   const [content, setContent] = useState([])
@@ -14,7 +14,7 @@ export default function Home() {
     let active = true
 
     async function load() {
-      const items = await getAllContent()
+      const items = await getPublicContent()
       if (active) setContent(items)
     }
 

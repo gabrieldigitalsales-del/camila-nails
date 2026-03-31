@@ -8,21 +8,36 @@ import AdminServices from '@/components/admin/AdminServices'
 import AdminPortfolio from '@/components/admin/AdminPortfolio'
 import AdminContact from '@/components/admin/AdminContact'
 import { Button } from '@/components/ui/button'
-import { getAllContent, resetContent } from '@/services/contentStore'
+import { checkStorageConnection, getAdminContent, resetContent } from '@/services/contentStore'
 
 export default function Admin() {
   const [content, setContent] = useState([])
   const [loading, setLoading] = useState(true)
+  const [connectionMessage, setConnectionMessage] = useState('Conectando ao armazenamento online...')
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    const items = await getAllContent()
-    setContent(items)
-    setLoading(false)
+    try {
+      const [status, items] = await Promise.all([checkStorageConnection(), getAdminContent()])
+      setConnectionMessage(
+        status.ok
+          ? 'Painel conectado ao armazenamento online da Vercel.'
+          : 'Falha ao validar a conexao com o armazenamento online.'
+      )
+      setContent(items)
+    } catch (error) {
+      setConnectionMessage(error?.message || 'Nao foi possivel conectar ao armazenamento online.')
+      setContent([])
+      throw error
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
-    refresh()
+    refresh().catch((error) => {
+      toast.error(error?.message || 'Nao foi possivel carregar o painel admin.')
+    })
   }, [refresh])
 
   const slides = content.filter((item) => item.section === 'hero_slide')
@@ -47,10 +62,8 @@ export default function Admin() {
       <AdminHeader />
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground font-body">
-            {loading ? 'Carregando conteudo...' : 'Painel conectado ao armazenamento da Vercel.'}
-          </p>
-          <Button variant="outline" onClick={handleReset} className="gap-2">
+          <p className="text-sm text-muted-foreground font-body">{loading ? 'Carregando conteudo...' : connectionMessage}</p>
+          <Button variant="outline" onClick={handleReset} className="gap-2" disabled={loading || !content.length}>
             <RotateCcw className="w-4 h-4" />
             Restaurar padrao
           </Button>

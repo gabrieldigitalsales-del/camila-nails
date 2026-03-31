@@ -2,9 +2,7 @@ import { put } from '@vercel/blob'
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '8mb',
-    },
+    bodyParser: false,
   },
 }
 
@@ -14,31 +12,34 @@ function sanitizeFilename(filename = 'arquivo') {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9.-]/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .toLowerCase()
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store')
+
   if (req.method !== 'POST') {
-    return res.status(405).send('Metodo nao permitido.')
+    return res.status(405).json({ error: 'Metodo nao permitido.' })
   }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-    const fileName = body?.fileName
-    const contentType = body?.contentType || 'application/octet-stream'
-    const base64 = body?.base64
+    const rawName = typeof req.query.filename === 'string' ? req.query.filename : 'imagem'
+    const safeName = sanitizeFilename(rawName)
 
-    if (!fileName || !base64) {
-      return res.status(400).send('Arquivo nao enviado.')
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN nao configurado no projeto.' })
     }
 
-    const pathname = `uploads/${Date.now()}-${sanitizeFilename(fileName)}`
-    const buffer = Buffer.from(base64, 'base64')
+    if (!safeName) {
+      return res.status(400).json({ error: 'Nome do arquivo invalido.' })
+    }
 
-    const blob = await put(pathname, buffer, {
+    const pathname = `uploads/${Date.now()}-${safeName}`
+    const blob = await put(pathname, req, {
       access: 'public',
       addRandomSuffix: true,
-      contentType,
+      contentType: req.headers['content-type'] || 'application/octet-stream',
       cacheControlMaxAge: 0,
     })
 
@@ -47,6 +48,8 @@ export default async function handler(req, res) {
       pathname: blob.pathname,
     })
   } catch (error) {
-    return res.status(500).send(error?.message || 'Erro ao enviar imagem.')
+    return res.status(500).json({
+      error: error?.message || 'Erro ao enviar imagem.',
+    })
   }
 }

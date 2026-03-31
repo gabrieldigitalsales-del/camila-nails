@@ -1,59 +1,51 @@
 import { defaultContent } from '@/data/defaultContent'
 
-const STORAGE_KEY = 'camila-almeida-site-content-fallback-v1'
-
 function sortItems(items) {
   return [...items].sort((a, b) => (a.order || 0) - (b.order || 0))
 }
 
-function readLocalFallback() {
-  if (typeof window === 'undefined') return sortItems(defaultContent)
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultContent))
-    return sortItems(defaultContent)
-  }
-
+async function parseError(response) {
+  const text = await response.text()
   try {
-    return sortItems(JSON.parse(raw))
-  } catch {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultContent))
-    return sortItems(defaultContent)
-  }
-}
-
-function writeLocalFallback(items) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sortItems(items)))
+    const json = JSON.parse(text)
+    if (json?.error) return json.error
+    if (json?.message) return json.message
+  } catch {}
+  return text || `Erro ${response.status}`
 }
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
+    cache: 'no-store',
+    ...options,
     headers: {
-      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.body && !(options.body instanceof Blob) && !(options.body instanceof FormData)
+        ? { 'Content-Type': 'application/json' }
+        : {}),
       ...(options.headers || {}),
     },
-    ...options,
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || `Erro ${response.status}`)
+    throw new Error(await parseError(response))
   }
 
   return response.json()
 }
 
-export async function getAllContent() {
+export async function getAdminContent() {
+  const data = await requestJson('/api/content')
+  if (!Array.isArray(data?.items)) {
+    throw new Error('Resposta invalida do armazenamento online.')
+  }
+  return sortItems(data.items)
+}
+
+export async function getPublicContent() {
   try {
-    const data = await requestJson('/api/content', { cache: 'no-store' })
-    if (Array.isArray(data?.items)) {
-      writeLocalFallback(data.items)
-      return sortItems(data.items)
-    }
-    return readLocalFallback()
+    return await getAdminContent()
   } catch {
-    return readLocalFallback()
+    return sortItems(defaultContent)
   }
 }
 
@@ -63,53 +55,63 @@ export async function saveAllContent(items) {
     method: 'PUT',
     body: JSON.stringify({ items: sorted }),
   })
-  writeLocalFallback(data.items || sorted)
-  return sortItems(data.items || sorted)
+
+  if (!Array.isArray(data?.items)) {
+    throw new Error('Nao foi possivel confirmar o salvamento online.')
+  }
+
+  return sortItems(data.items)
 }
 
 export async function createContent(item) {
-  const items = await getAllContent()
+  const items = await getAdminContent()
   const created = { id: crypto.randomUUID(), ...item }
   return saveAllContent([...items, created])
 }
 
 export async function updateContent(id, updates) {
-  const items = await getAllContent()
+  const items = await getAdminContent()
   return saveAllContent(items.map((item) => (item.id === id ? { ...item, ...updates } : item)))
 }
 
 export async function deleteContent(id) {
-  const items = await getAllContent()
+  const items = await getAdminContent()
   return saveAllContent(items.filter((item) => item.id !== id))
 }
 
 export async function resetContent() {
   const data = await requestJson('/api/reset', { method: 'POST' })
-  writeLocalFallback(data.items || defaultContent)
-  return sortItems(data.items || defaultContent)
-}
-
-async function fileToBase64(file) {
-  const buffer = await file.arrayBuffer()
-  let binary = ''
-  const bytes = new Uint8Array(buffer)
-  const chunkSize = 0x8000
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  if (!Array.isArray(data?.items)) {
+    throw new Error('Nao foi possivel restaurar o conteudo online.')
   }
-  return btoa(binary)
+  return sortItems(data.items)
 }
 
 export async function uploadImage(file) {
-  const base64 = await fileToBase64(file)
-  const data = await requestJson('/api/upload', {
+  const fileName = encodeURIComponent(file.name || `imagem-${Date.now()}.jpg`)
+  const response = await fetch(`/api/upload?filename=${fileName}`, {
     method: 'POST',
-    body: JSON.stringify({
-      fileName: file.name,
-      contentType: file.type,
-      base64,
-    }),
+    body: file,
+    headers: {
+      'content-type': file.type || 'application/octet-stream',
+    },
   })
 
+  if (!response.ok) {
+    throw new Error(await parseError(response))
+  }
+
+  const data = await response.json()
+  if (!data?.url) {
+    throw new Error('Upload concluido sem URL de retorno.')
+  }
   return data.url
+}
+
+export async function checkStorageConnection() {
+  const data = await requestJson('/api/content')
+  return {
+    ok: Array.isArray(data?.items),
+    mode: data?.mode || 'blob',
+  }
 }

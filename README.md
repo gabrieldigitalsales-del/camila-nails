@@ -2,7 +2,7 @@
 
 Esta versao foi refeita para manter o site na Vercel sem Base44 e sem banco externo separado.
 
-## Arquitetura recomendada
+## Arquitetura
 
 - Front-end React + Vite
 - API serverless em `/api`
@@ -14,37 +14,21 @@ Com isso, quando voce editar textos, servicos, valores e imagens no `/admin`, o 
 
 ## Como rodar localmente
 
-### Modo completo (frontend + API da Vercel)
-
-1. Instale as dependencias:
+### Interface apenas
 
 ```bash
 npm install
-```
-
-2. Conecte o projeto a Vercel e puxe as variaveis:
-
-```bash
-vercel link
-vercel env pull .env.local
-```
-
-3. Rode localmente:
-
-```bash
 npm run dev
 ```
 
-### Modo somente frontend
-
-Se voce quiser apenas visualizar o layout sem API da Vercel:
+### Interface + API da Vercel + Blob
 
 ```bash
 npm install
-npm run dev:frontend
+vercel link
+vercel env pull .env.local
+npm run dev:vercel
 ```
-
-Nesse modo o projeto usa fallback local no navegador.
 
 ## Deploy na Vercel
 
@@ -59,9 +43,10 @@ Nesse modo o projeto usa fallback local no navegador.
 - Site: `/`
 - Admin: `/admin`
 
-## Observacoes importantes
+## Observacoes importantes desta versao
 
-- O admin salva online quando a API estiver disponivel
-- Se a API nao responder, o projeto ainda funciona com fallback local
-- Upload server-side e ideal para imagens comuns do site; para arquivos muito grandes, use upload client-side em uma proxima iteracao
-- Esta versao nao inclui login no admin
+- O painel admin nao usa fallback em localStorage para salvar.
+- Se a API falhar, o admin mostra erro real em vez de fingir que salvou.
+- O upload de imagem usa envio direto do arquivo para `/api/upload?filename=...`, no formato esperado pela Vercel Blob.
+- Para testar localmente com API e Blob, use `npm run dev:vercel`.
+- Ao remover uma imagem no admin, o site deixa de exibi-la imediatamente apos salvar o JSON online.
