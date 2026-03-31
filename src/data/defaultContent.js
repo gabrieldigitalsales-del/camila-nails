@@ -53,7 +53,7 @@ export const defaultContent = [
     title: 'Sobre Mim',
     subtitle: 'Atendimento personalizado e delicado',
     description: 'Transformo cada atendimento em uma experiencia acolhedora, com foco em acabamento refinado, durabilidade e beleza que combina com voce.',
-    image_url: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80',
+    image_url: '',
     order: 1,
     is_active: true,
   },
