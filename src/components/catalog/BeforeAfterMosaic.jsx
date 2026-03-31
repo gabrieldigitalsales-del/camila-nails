@@ -34,7 +34,7 @@ export default function BeforeAfterMosaic({ groups = [] }) {
           <p className="font-heading text-sm md:text-base text-muted-foreground tracking-[0.3em] uppercase mb-1">Mosaico</p>
           <h2 className="font-heading text-4xl md:text-6xl font-light italic text-foreground">Antes e Depois</h2>
           <p className="font-body text-sm text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Selecione suas proprias fotos no painel admin para substituir estas imagens de exemplo.
+            Veja a transformação em cada atendimento
           </p>
         </motion.div>
 
