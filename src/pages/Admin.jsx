@@ -21,7 +21,7 @@ export default function Admin() {
       const [status, items] = await Promise.all([checkStorageConnection(), getAdminContent()])
       setConnectionMessage(
         status.ok
-          ? 'Painel conectado ao armazenamento online da Vercel.'
+          ? `Painel conectado ao Blob da Vercel (${status.access}). ${status.initialized ? 'Conteudo online carregado.' : 'Conteudo padrao em uso ate o primeiro salvamento.'}`
           : 'Falha ao validar a conexao com o armazenamento online.'
       )
       setContent(items)

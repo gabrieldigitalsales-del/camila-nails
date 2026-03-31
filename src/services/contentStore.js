@@ -113,5 +113,7 @@ export async function checkStorageConnection() {
   return {
     ok: Array.isArray(data?.items),
     mode: data?.mode || 'blob',
+    access: data?.access || 'desconhecido',
+    initialized: Boolean(data?.initialized),
   }
 }

@@ -1,10 +1,4 @@
-import { put } from '@vercel/blob'
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+import { ensureBlobToken, json, putWithDetectedAccess } from './_lib/blobStore.js'
 
 function sanitizeFilename(filename = 'arquivo') {
   return filename
@@ -16,40 +10,34 @@ function sanitizeFilename(filename = 'arquivo') {
     .toLowerCase()
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store')
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Metodo nao permitido.' })
-  }
-
+export async function POST(request) {
   try {
-    const rawName = typeof req.query.filename === 'string' ? req.query.filename : 'imagem'
+    await ensureBlobToken()
+
+    const url = new URL(request.url)
+    const rawName = url.searchParams.get('filename') || 'imagem'
     const safeName = sanitizeFilename(rawName)
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN nao configurado no projeto.' })
+    if (!safeName) {
+      return json({ error: 'Nome do arquivo invalido.' }, 400)
     }
 
-    if (!safeName) {
-      return res.status(400).json({ error: 'Nome do arquivo invalido.' })
+    const type = request.headers.get('content-type') || 'application/octet-stream'
+    const arrayBuffer = await request.arrayBuffer()
+
+    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+      return json({ error: 'Arquivo vazio.' }, 400)
     }
 
     const pathname = `uploads/${Date.now()}-${safeName}`
-    const blob = await put(pathname, req, {
-      access: 'public',
+    const { blob, access } = await putWithDetectedAccess(pathname, arrayBuffer, {
       addRandomSuffix: true,
-      contentType: req.headers['content-type'] || 'application/octet-stream',
+      contentType: type,
       cacheControlMaxAge: 0,
     })
 
-    return res.status(200).json({
-      url: blob.url,
-      pathname: blob.pathname,
-    })
+    return json({ url: blob.url, pathname: blob.pathname, access })
   } catch (error) {
-    return res.status(500).json({
-      error: error?.message || 'Erro ao enviar imagem.',
-    })
+    return json({ error: error?.message || 'Erro ao enviar imagem.' }, 500)
   }
 }
