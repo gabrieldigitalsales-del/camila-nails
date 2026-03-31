@@ -1,9 +1,7 @@
-import { requireAdmin } from './_lib/auth.js'
+import { requireAuth } from './_lib/auth.js'
 import { ensureBlobToken, getJsonContent, json, saveJsonContent } from './_lib/blobStore.js'
 
-export async function GET(request) {
-  const authError = requireAdmin(request)
-  if (authError) return authError
+export async function GET() {
   try {
     await ensureBlobToken()
     const { items, access, initialized } = await getJsonContent()
@@ -14,8 +12,9 @@ export async function GET(request) {
 }
 
 export async function PUT(request) {
-  const authError = requireAdmin(request)
-  if (authError) return authError
+  const unauthorized = requireAuth(request)
+  if (unauthorized) return unauthorized
+
   try {
     await ensureBlobToken()
 

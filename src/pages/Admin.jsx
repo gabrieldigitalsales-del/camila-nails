@@ -8,26 +8,27 @@ import AdminServices from '@/components/admin/AdminServices'
 import AdminPortfolio from '@/components/admin/AdminPortfolio'
 import AdminContact from '@/components/admin/AdminContact'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { checkStorageConnection, getAdminContent, resetContent } from '@/services/contentStore'
 
-async function parseJson(response) {
+async function parseAuthResponse(response) {
   const text = await response.text()
   try {
-    return JSON.parse(text)
+    const data = JSON.parse(text)
+    return data?.error || data?.message || text || `Erro ${response.status}`
   } catch {
-    return { error: text || `Erro ${response.status}` }
+    return text || `Erro ${response.status}`
   }
 }
 
 export default function Admin() {
   const [content, setContent] = useState([])
   const [loading, setLoading] = useState(true)
-  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [authChecking, setAuthChecking] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
-  const [loginLoading, setLoginLoading] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
   const [connectionMessage, setConnectionMessage] = useState('Conectando ao armazenamento online...')
 
   const refresh = useCallback(async () => {
@@ -50,32 +51,27 @@ export default function Admin() {
   }, [])
 
   const checkAuth = useCallback(async () => {
-    setCheckingAuth(true)
+    setAuthChecking(true)
     try {
-      const response = await fetch('/api/admin-check', { cache: 'no-store' })
-      const data = await parseJson(response)
-      setAuthenticated(Boolean(data?.authenticated))
-      if (!data?.configured) {
-        toast.error('Configure ADMIN_PASSWORD na Vercel para proteger o painel.')
-      }
-      return Boolean(data?.authenticated)
-    } catch (error) {
-      toast.error(error?.message || 'Nao foi possivel validar o acesso ao admin.')
+      const response = await fetch('/api/admin-check', { cache: 'no-store', credentials: 'include' })
+      setAuthenticated(response.ok)
+    } catch {
       setAuthenticated(false)
-      return false
     } finally {
-      setCheckingAuth(false)
+      setAuthChecking(false)
     }
   }, [])
 
   useEffect(() => {
-    checkAuth().then((ok) => {
-      if (!ok) return
-      refresh().catch((error) => {
-        toast.error(error?.message || 'Nao foi possivel carregar o painel admin.')
-      })
+    checkAuth()
+  }, [checkAuth])
+
+  useEffect(() => {
+    if (!authenticated) return
+    refresh().catch((error) => {
+      toast.error(error?.message || 'Nao foi possivel carregar o painel admin.')
     })
-  }, [checkAuth, refresh])
+  }, [authenticated, refresh])
 
   const slides = useMemo(() => content.filter((item) => item.section === 'hero_slide'), [content])
   const aboutItems = useMemo(() => content.filter((item) => item.section === 'about'), [content])
@@ -83,6 +79,45 @@ export default function Admin() {
   const portfolioGroups = useMemo(() => content.filter((item) => item.section === 'portfolio_group'), [content])
   const contact = useMemo(() => content.find((item) => item.section === 'contact'), [content])
   const settings = useMemo(() => content.find((item) => item.section === 'site_settings'), [content])
+
+  const handleLogin = async (event) => {
+    event.preventDefault()
+    setAuthLoading(true)
+    try {
+      const response = await fetch('/api/admin-login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await parseAuthResponse(response))
+      }
+
+      setAuthenticated(true)
+      setPassword('')
+      await refresh()
+      toast.success('Login realizado com sucesso.')
+    } catch (error) {
+      toast.error(error?.message || 'Nao foi possivel entrar no admin.')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin-logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } finally {
+      setAuthenticated(false)
+      setContent([])
+      toast.success('Sessao encerrada.')
+    }
+  }
 
   const handleReset = async () => {
     try {
@@ -94,68 +129,41 @@ export default function Admin() {
     }
   }
 
-  const handleLogin = async (event) => {
-    event.preventDefault()
-    setLoginLoading(true)
-    try {
-      const response = await fetch('/api/admin-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      })
-      const data = await parseJson(response)
-      if (!response.ok) {
-        throw new Error(data?.error || 'Nao foi possivel entrar no painel.')
-      }
-      setAuthenticated(true)
-      setPassword('')
-      toast.success('Acesso liberado.')
-      await refresh()
-    } catch (error) {
-      toast.error(error?.message || 'Senha incorreta.')
-    } finally {
-      setLoginLoading(false)
-    }
-  }
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/admin-logout', { method: 'POST' })
-      setAuthenticated(false)
-      setContent([])
-      toast.success('Voce saiu do painel.')
-    } catch (error) {
-      toast.error(error?.message || 'Nao foi possivel sair.')
-    }
-  }
-
-  if (checkingAuth) {
-    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Verificando acesso...</div>
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center px-6">
+        <p className="text-sm text-muted-foreground font-body">Verificando acesso ao painel...</p>
+      </div>
+    )
   }
 
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-secondary/30 flex items-center justify-center px-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Painel administrativo</CardTitle>
-            <CardDescription>Digite a senha para editar o conteudo do site.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+        <div className="w-full max-w-md rounded-3xl border bg-background p-8 shadow-sm space-y-6">
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Entrar no painel admin</h1>
+            <p className="text-sm text-muted-foreground">Digite a senha configurada na Vercel para liberar as edicoes.</p>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleLogin}>
+            <div className="space-y-2">
+              <Label htmlFor="admin-password">Senha</Label>
               <Input
+                id="admin-password"
                 type="password"
-                placeholder="Senha do admin"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                placeholder="Digite sua senha"
                 autoComplete="current-password"
               />
-              <Button type="submit" className="w-full" disabled={loginLoading || !password.trim()}>
-                {loginLoading ? 'Entrando...' : 'Entrar'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={authLoading || !password.trim()}>
+              {authLoading ? 'Entrando...' : 'Entrar'}
+            </Button>
+          </form>
+        </div>
       </div>
     )
   }
@@ -166,12 +174,12 @@ export default function Admin() {
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sm text-muted-foreground font-body">{loading ? 'Carregando conteudo...' : connectionMessage}</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" onClick={handleReset} className="gap-2" disabled={loading || !content.length}>
               <RotateCcw className="w-4 h-4" />
               Restaurar padrao
             </Button>
-            <Button variant="ghost" onClick={handleLogout} className="gap-2">
+            <Button variant="outline" onClick={handleLogout} className="gap-2">
               <LogOut className="w-4 h-4" />
               Sair
             </Button>

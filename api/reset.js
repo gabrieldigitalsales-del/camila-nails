@@ -1,10 +1,11 @@
-import { requireAdmin } from './_lib/auth.js'
+import { requireAuth } from './_lib/auth.js'
 import { defaultContent } from '../src/data/defaultContent.js'
 import { ensureBlobToken, json, saveJsonContent } from './_lib/blobStore.js'
 
 export async function POST(request) {
-  const authError = requireAdmin(request)
-  if (authError) return authError
+  const unauthorized = requireAuth(request)
+  if (unauthorized) return unauthorized
+
   try {
     await ensureBlobToken()
     const saved = await saveJsonContent(defaultContent)
