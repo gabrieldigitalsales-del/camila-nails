@@ -78,7 +78,7 @@ export default function ContactFooter({ contact, settings }) {
           </div>
         </div>
 
-        {/* Copyright */}
+{/* Copyright */}
 <div className="mt-12 pt-8 border-t border-background/10">
   <p className="font-body text-xs text-background/30 tracking-wider">
     © {new Date().getFullYear()} {settings?.title || 'Camila Almeida'} — {settings?.subtitle || 'Nail Designer'} · Feito por{' '}
@@ -92,7 +92,6 @@ export default function ContactFooter({ contact, settings }) {
     </a>
   </p>
 </div>
-        </div>
 </section>
 );
 }
