@@ -79,12 +79,16 @@ export default function ContactFooter({ contact, settings }) {
         </div>
 
         {/* Copyright */}
-        <div className="mt-12 pt-8 border-t border-background/10">
-          <p className="font-body text-xs text-background/30 tracking-wider">
-            © {new Date().getFullYear()} {settings?.title || 'Camila Almeida'} — {settings?.subtitle || 'Nail Designer'}
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
+<div className="mt-12 pt-8 border-t border-background/10">
+  <p className="font-body text-xs text-background/30 tracking-wider">
+    © {new Date().getFullYear()} {settings?.title || 'Camila Almeida'} — {settings?.subtitle || 'Nail Designer'} · Feito por{' '}
+    <a
+      href="https://www.instagram.com/nexor_digital_group_"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="hover:underline"
+    >
+      Nexor Digital Group
+    </a>
+  </p>
+</div>
