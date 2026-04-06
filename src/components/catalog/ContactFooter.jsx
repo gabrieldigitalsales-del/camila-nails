@@ -92,3 +92,7 @@ export default function ContactFooter({ contact, settings }) {
     </a>
   </p>
 </div>
+        </div>
+</section>
+);
+}
