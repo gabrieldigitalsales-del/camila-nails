@@ -26,7 +26,7 @@ export const defaultContent = [
       instagram_url: 'https://instagram.com/camilaalmeida__nail',
       whatsapp: '+55 31 7246-7698',
       whatsapp_url: 'https://wa.me/553172467698',
-      address: 'Rua Paulo Frontin, 980, Centro, Sete Lagoas - MG',
+      address: 'Rua Goiás 198, Boa Vista, Sete Lagoas - MG',
     }),
   },
   {
